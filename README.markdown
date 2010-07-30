@@ -1,14 +1,13 @@
 S3NUKEM
 =======
 
-**s3nukem** is a single-file Ruby script to delete [Amazon S3](http://aws.amazon.com/s3) buckets with many objects (millions) quickly by using multiple threads to retrieve and delete the individual objects.
+**s3nukem** is a slightly improved version of [s3nuke](http://github.com/SFEley/s3nuke/), a Ruby script by Steve Eley that relatively quickly deletes an Amazon Web Services (AWS) Simple Storage Service (S3) bucket with many objects (millions) by using multiple threads to retrieve and delete the individual objects.
 
 In my use case, [s3cmd](http://s3tools.org/s3cmd), which deletes with a single thread, deleted objects at a rate of about 1,800/minute (2.5 million / day). s3nukem, with 10 delete threads deleted objects at a rate of about 9,000/minute (13 million / day). My task of deleting 99 million objects went from 40 days to 7.6 days. More threads and Ruby 1.9 (I was using 1.8.5) would have probably completed the job even more quickly.
 
 
 Improvements
 ------------
-This is a slightly improved version of [s3nuke](http://github.com/SFEley/s3nuke/) by Steve Eley:
 
 * The key retrieval thread will pause when the queue contains `1000 * thread_count` items. The original script's queue would grow unabated, eating up memory unnecessarily.
 
@@ -59,4 +58,4 @@ Credits
 -------
 Original script by [Steve Eley](http://extraneous.org/).
 
-Improvements by [Robert LaThanh](http://robertlathanh.com/).
+Improvements by [Robert LaThanh](http://robertlathanh.com/2010/07/s3nukem-delete-large-amazon-s3-buckets/).
