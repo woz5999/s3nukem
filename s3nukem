@@ -1,17 +1,16 @@
 #!/usr/bin/env ruby
 
-# s3nuke.rb
-# by: Stephen Eley (sfeley@gmail.com)
-# A simple script to delete a very large bucket in Amazon S3.
-# Licensed under the Apache License v2.0 (http://apache.org/licenses)
+# s3nukem
 #
-# RATIONALE: Deleting buckets containing many thousands or millions of
-# objects in S3 is a huge pain, because the buckets must be empty before
-# deletion and each object must be deleted individually.  Amazon provides
-# no shortcuts for this.  This script uses the AWS::S3 gem and 
-# multiple threads to run a number of delete operations simultaneously, 
-# shortening the round-trip HTTP wait and making more efficient use of
-# network bandwidth.
+# original by: Stephen Eley (sfeley@gmail.com)
+# improved by: Robert LaThanh
+#
+# A script to delete Amazon S3 buckets with many objects (millions) quickly by
+# using multiple threads to retrieve and delete the individual objects.
+#
+# http://github.com/lathanh/s3nuke
+#
+# Licensed under the Apache License v2.0 (http://apache.org/licenses)
 
 require 'rubygems'
 require 'optparse'
@@ -27,26 +26,32 @@ end
 access_key = nil
 secret_key = nil
 thread_count = 10
+max_queue = 10 * 1000
+STDOUT.sync = true
+
 buckets = []
 
 # Parse the command line
 begin
-  opts = OptionParser.new 
+  opts = OptionParser.new
   opts.banner = "Usage: #{$PROGRAM_NAME} [options] buckets..."
   opts.separator ''
   opts.separator 'Options:'
-  opts.on('-a', 
-          '--access ACCESS', 
-          String, 
+  opts.on('-a',
+          '--access ACCESS',
+          String,
           'Amazon Access Key (required)') {|key| access_key = key}
-  opts.on('-s', 
-          '--secret SECRET', 
-          String, 
+  opts.on('-s',
+          '--secret SECRET',
+          String,
           'Amazon Secret Key (required)') {|key| secret_key = key}
-  opts.on('-t', 
-          '--threads COUNT', 
-          Integer, 
-          "Number of simultaneous threads (default #{thread_count})") {|val| thread_count = val}
+  opts.on('-t',
+          '--threads COUNT',
+          Integer,
+          "Number of simultaneous threads (default #{thread_count})") do |val|
+            thread_count = val
+            max_queue = val * 1000
+          end
   opts.on('-h', '--help', 'Show this message') do
     puts opts
     exit
@@ -91,7 +96,7 @@ buckets.each do |bucket|
   threads = []
   queue = Queue.new
   mutex_total = Mutex.new
-  
+
   # Tracking variables
   total_listed = 0
   total_deleted = 0
@@ -99,10 +104,14 @@ buckets.each do |bucket|
   # Key retrieval thread
   threads << Thread.new do
     Thread.current[:number] = "CATALOG"
-    print "Starting catalog thread...\n"
+    puts "Starting catalog thread..."
     s3 = RightAws::S3Interface.new(access_key, secret_key, :multi_thread => true, :port => 80, :protocol => 'http', :logger => log)
     prefix = ''
     begin
+      while queue.length > max_queue
+        sleep 1
+      end
+
       keys = s3.list_bucket(bucket, :marker => prefix)
       prefix = keys.last[:key] unless keys.empty?
       keys.each do |key|
@@ -113,30 +122,34 @@ buckets.each do |bucket|
     thread_count.times {queue.enq(:END_OF_BUCKET)}
   end
 
+  start_time = Time.now
   thread_count.times do |count|
     threads << Thread.new(count) do |number|
       Thread.current[:number] = number
-      print "Starting deletion thread #{number}...\n"
+      puts "Starting deletion thread #{number}..."
       s3 = RightAws::S3Interface.new(access_key, secret_key, :multi_thread => true, :port => 80, :protocol => 'http', :logger => log)
       begin
         key = queue.deq
         unless key == :END_OF_BUCKET
-          s3.delete(bucket, key) 
+          s3.delete(bucket, key)
           mutex_total.synchronize {total_deleted += 1}
-          print "Deleted #{total_deleted} out of #{total_listed}\n" if (rand(1000) == 1)
+          if (rand(1000) == 1)
+            elapsed = Time.now - start_time
+            puts "#{elapsed}: Deleted #{total_deleted} out of #{total_listed}"
+          end
         end
       end until (key == :END_OF_BUCKET)
-    end  
+    end
   end
-  
-  threads.each do |t| 
+
+  threads.each do |t|
     begin
       t.join
     rescue RuntimeError => e
       puts "Failure on thread #{t[:number]}: #{e.message}"
     end
   end
-  
+
   # Clean up any stragglers and kill the bucket
   puts "Bucket #{bucket} deleted!" if mains3.force_delete_bucket(bucket)
   puts

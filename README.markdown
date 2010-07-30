@@ -1,37 +1,62 @@
-S3NUKE
-======
+S3NUKEM
+=======
 
-___"I say we take off and nuke the site from orbit. It's the only way to be sure."___  
-  -- _Ripley, [Aliens](http://www.imdb.com/title/tt0090605/)_
-  
-**s3nuke** is a single-file Ruby script to delete very large [Amazon S3](http://aws.amazon.com/s3) buckets.  It uses multiple threads to retrieve and delete the individual objects in a bucket efficiently regardless of their number.  In the use case for which the author wrote it, a bucket containing 260,000 files was deleted in a matter of minutes.
+**s3nukem** is a single-file Ruby script to delete [Amazon S3](http://aws.amazon.com/s3) buckets with many objects (millions) quickly by using multiple threads to retrieve and delete the individual objects.
+
+In my use case, [s3cmd](http://s3tools.org/s3cmd), which deletes with a single thread, deleted objects at a rate of about 1,800/minute (2.5 million / day). s3nukem, with 10 delete threads deleted objects at a rate of about 9,000/minute (13 million / day). My task of deleting 99 million objects went from 40 days to 7.6 days. More threads and Ruby 1.9 (I was using 1.8.5) would have probably completed the job even more quickly.
+
+
+Improvements
+------------
+This is a slightly improved version of [s3nuke](http://github.com/SFEley/s3nuke/) by Steve Eley:
+
+* The key retrieval thread will pause when the queue contains `1000 * thread_count` items. The original script's queue would grow unabated, eating up memory unnecessarily.
+
+* All output is automatically flushed, which ensures you can keep an eye on progress in real-time
+
+* Added the number of seconds elapsed since the start of the script to output so you can calculate the rate at which items are being deleted.
+
 
 Installation
 ------------
-Obviously you'll need Ruby.  **Ruby 1.9** will work much faster because of the native thread implementation.  This script will _probably_ work in 1.8, but the author hasn't tested it and doesn't care to.
+### You'll need:
 
-The **right\_aws** gem is the only gem requirement.  As of early September 2009, the latest 'official' version of the gem was still broken in Ruby 1.9; however, you can retrieve a [patched version](http://github.com/dmarkow/right_aws/tree/master) from Github:
+* **Ruby**
+    Ruby 1.9 should work faster because of the native thread implementation (on the other hand, network/S3 latency may be your biggest bottleneck).
 
-    sudo gem install dmarkow-right_aws --source http://gems.github.com
-    
-After that, just clone or download this script, `chmod 755 s3nuke` for luck, and run it to view the options.
+* **right\_aws** gem; [dmarkow's version](http://github.com/dmarkow/right_aws) if you're running Ruby >= 1.9
+
+        # Ruby < 1.9
+        sudo gem install right_aws
+
+        # Ruby >= 1.9
+        sudo gem install dmarkow-right_aws --source http://gems.github.com
+
+### Download and make executable; e.g.,
+
+    # download
+    wget http://github.com/lathanh/s3nukem/raw/master/s3nukem
+    # or
+    curl -O http://github.com/lathanh/s3nukem/raw/master/s3nukem
+
+    # make executable
+    chmod 755 s3nukem
+
 
 Obvious Warning
 ---------------
-Keep in mind that this is a script _intended_ to delete a very large S3 bucket very quickly.  You will not be prompted to ask you if you're sure.  There is no undo.
+This script is _intended_ to delete all of the items in an S3 bucket very quickly. You will not be prompted to ask you if you're sure. There is no undo.
 
 Do not taunt Happy Fun Script.
 
+
 License
 -------
-This script is released under the [Apache License](http://www.apache.org/licenses/), version 2.0.  I really don't care what you do with it, so long as "sue me" is not on the agenda.
+This script is released under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0). I really don't care what you do with it, so long as "sue me" is not on the agenda.
+
 
 Credits
 -------
-I'm Steve Eley.  I work for the [American Academy of Religion](http://aarweb.org) and wrote this on their dime.  If you're a religious scholar you've heard of AAR.  If you're not, don't worry about it.
+Original script by [Steve Eley](http://extraneous.org/).
 
-If you like science fiction, check out [Escape Pod](http://escapepod.org) for free audio short stories.
-
-Have Fun.
-
-
+Improvements by [Robert LaThanh](http://robertlathanh.com/).
