@@ -81,13 +81,6 @@ end
 log = Logger.new(STDOUT)
 log.level = Logger::ERROR
 mains3 = RightAws::S3Interface.new(access_key, secret_key, :multi_thread => true, :port => 80, :protocol => 'http', :logger => log)
-begin
-  mains3.list_all_my_buckets  # Confirm credentials
-rescue RightAws::AwsError => e
-  puts e.message
-  puts opts
-  exit
-end
 
 buckets.each do |bucket|
   puts "DELETING: #{bucket}"
