@@ -49,6 +49,11 @@ This script is _intended_ to delete all of the items in an S3 bucket very quickl
 Do not taunt Happy Fun Script.
 
 
+Docker
+-------
+
+    docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -ti --rm s3nukem:latest -a $AWS_ACCESS_KEY_ID -s $AWS_SECRET_ACCESS_KEY <bucket>
+
 License
 -------
 This script is released under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0). I really don't care what you do with it, so long as "sue me" is not on the agenda.
