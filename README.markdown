@@ -52,7 +52,13 @@ Do not taunt Happy Fun Script.
 Docker
 -------
 
-    docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -ti --rm s3nukem:latest -a $AWS_ACCESS_KEY_ID -s $AWS_SECRET_ACCESS_KEY <bucket>
+    docker run -ti --rm \
+      -e AWS_ACCESS_KEY_ID \
+      -e AWS_SECRET_ACCESS_KEY  \
+      s3nukem:latest \
+        -a $AWS_ACCESS_KEY_ID \
+        -s $AWS_SECRET_ACCESS_KEY \
+        <bucket>
 
 License
 -------
